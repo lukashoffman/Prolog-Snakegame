@@ -46,6 +46,18 @@ check_neighbors_pattern(Piece,N,E,S,W) :- 1 #=< Piece,
 count_cell(0,0) :- !.
 count_cell(_,1).
 
+checkRowClues([],[]).
+checkRowClues([Row|Solution], [Clue|RowClues]) :- 
+    countRow(Row, Clue, 0),
+    checkRowClues(Solution, RowClues).
+
+countRow([], Clue, X) :- Clue = X.
+countRow([Cell|Row], Clue, X) :- count_cell(Cell, X1), Y is X + X1, countRow(Row, Clue, Y).
+
+checkColClues([], []).
+checkColClues(Solution, ColClues) :- transpose(Solution, X), checkRowClues(X, ColClues).
+
+
 countNeighbors([]).
 countNeighbors([RowA, RowB | Sol]) :- check_neighbors_rows([],[0 | RowA], [0 | RowB]), countNeighbors([RowA, RowB |Sol], notfirst).
 countNeighbors([RowA, RowB], notfirst) :- check_neighbors_rows([0 | RowA], [0 | RowB], []).

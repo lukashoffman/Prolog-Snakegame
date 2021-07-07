@@ -1,3 +1,4 @@
+:- [tests].
 :- use_module(library(clpfd)). % Import the module
 :- set_prolog_flag(clpfd_monotonic, true). % setting to get useful errors sometime
 

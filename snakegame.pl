@@ -18,7 +18,6 @@ copyRow([],[]).
 copyRow([-1|R],[X|S]) :- (X = 0; X = 2), copyRow(R,S).
 copyRow([Clue|R],[Clue|S]) :- Clue \= -1, copyRow(R,S).
 
-
 %First row
 check_neighbors_rows([],[B1,B2],[_,C2]) :- check_neighbors_pattern(B2,0,0,C2,B1).
 check_neighbors_rows([],[W,M,E|RowB],[_,S,C3|RowC]) :-
@@ -43,16 +42,16 @@ check_neighbors_rows([A1,N,A3|RowA],[W,M,E|RowB],[_,S,C3|RowC]) :-
 	touchCheck(A1, N, W, M),
 	check_neighbors_pattern(M,N,E,S,W),
 	check_neighbors_rows([N,A3|RowA],[M,E|RowB],[S,C3|RowC]).
-
+:- dynamic check_neighbors_pattern/5.
 check_neighbors_pattern(0,_,_,_,_) :- !.
 check_neighbors_pattern(Piece,N,E,S,W) :- 1 #=< Piece,
 	count_cell(N,X1),
 	count_cell(E,X2),
 	count_cell(S,X3),
 	count_cell(W,X4),
-	Piece #= X1+X2+X3+X4.
+	Piece #= X1+X2+X3+X4, asserta(check_neighbors_pattern(Piece,N,E,S,W) :- !).
 
-count_cell(0,0) :- !.
+count_cell(0,0).
 count_cell(_,1).
 
 countNeighbors([]).
@@ -69,12 +68,14 @@ checkRowClues([Row|Solution], [Clue|RowClues]) :-
 countRow([], Clue, X) :- Clue = X.
 countRow([Cell|Row], Clue, X) :- count_cell(Cell, X1), Y is X + X1, countRow(Row, Clue, Y).
 
-checkColClues([], []).
+checkColClues([], []) :- !.
 checkColClues(Solution, ColClues) :- transpose(Solution, X), checkRowClues(X, ColClues).
 
+:- dynamic touchCheck/4. 
 touchCheck(X1, X2, X3, X4) :-
 	count_cell(X1,A),
 	count_cell(X2,B),
 	count_cell(X3,C),
 	count_cell(X4,D),
-	not((A=D, B=C, A+B+C+D #\= 0)). %Check to see if the opposite corners are equal.
+	not((A=D, B=C, A+B+C+D #\= 0)),
+	asserta(touchCheck(X1,X2,X3,X4) :- !). %Check to see if the opposite corners are equal.

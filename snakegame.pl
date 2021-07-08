@@ -1,4 +1,3 @@
-:- [tests].
 :- use_module(library(clpfd)). % Import the module
 :- set_prolog_flag(clpfd_monotonic, true). % setting to get useful errors sometime
 
@@ -6,7 +5,6 @@ snake(RowClues, ColClues, Grid, Solution)
 :- copyGrid(Grid,Solution)
 , checkRowClues(Solution,RowClues)
 , checkColClues(Solution,ColClues)
-%, nonTouching(Solution) % snake cannot touch itself
 , countNeighbors(Solution) % heads have 1 neighbor, midpoints 2
 %, snakeConnected(Solution) % snake must be connected
 .
@@ -17,6 +15,15 @@ copyGrid([Row|G],[RowS|S]) :- copyRow(Row,RowS), copyGrid(G,S).
 copyRow([],[]).
 copyRow([-1|R],[X|S]) :- (X = 0; X = 2), copyRow(R,S).
 copyRow([Clue|R],[Clue|S]) :- Clue \= -1, copyRow(R,S).
+
+
+copyGrid2([],[],[]).
+copyGrid2([Row|G],[RowS|S],X,CoordList) :- copyRow2(Row,X,0,RowS, CoordList), 
+										   X1 is X + 1, copyGrid2(G,S,X1,CoordList).
+
+copyRow2([],[],_,[]).
+copyRow2([-1|R],X,Y,[Z|S], CoordList) :- (Z = 0; Z = 2),Y1 is Y + 1, (Z = 2 -> copyRow2(R,S,X,Y1,[[X,Y]|CoordList])) ; copyRow2(R,S,X,Y1,CoordList).
+copyRow2([Clue|R],X,Y,[Clue|S], CoordList) :- Clue \= -1, Y1 is Y + 1, copyRow2(R,S,X,Y1,[[X,Y]|CoordList]).
 
 %First row
 check_neighbors_rows([],[B1,B2],[_,C2]) :- check_neighbors_pattern(B2,0,0,C2,B1).
@@ -42,6 +49,8 @@ check_neighbors_rows([A1,N,A3|RowA],[W,M,E|RowB],[_,S,C3|RowC]) :-
 	touchCheck(A1, N, W, M),
 	check_neighbors_pattern(M,N,E,S,W),
 	check_neighbors_rows([N,A3|RowA],[M,E|RowB],[S,C3|RowC]).
+
+
 :- dynamic check_neighbors_pattern/5.
 check_neighbors_pattern(0,_,_,_,_) :- !.
 check_neighbors_pattern(Piece,N,E,S,W) :- 1 #=< Piece,
@@ -51,7 +60,7 @@ check_neighbors_pattern(Piece,N,E,S,W) :- 1 #=< Piece,
 	count_cell(W,X4),
 	Piece #= X1+X2+X3+X4, asserta(check_neighbors_pattern(Piece,N,E,S,W) :- !).
 
-count_cell(0,0).
+count_cell(0,0) :- !.
 count_cell(_,1).
 
 countNeighbors([]).
@@ -65,7 +74,7 @@ checkRowClues([Row|Solution], [Clue|RowClues]) :-
     countRow(Row, Clue, 0),
     checkRowClues(Solution, RowClues).
 
-countRow([], Clue, X) :- Clue = X.
+countRow([], Clue, Clue) :- !.
 countRow([Cell|Row], Clue, X) :- count_cell(Cell, X1), Y is X + X1, countRow(Row, Clue, Y).
 
 checkColClues([], []) :- !.

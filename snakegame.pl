@@ -5,9 +5,9 @@
 snake(RowClues, ColClues, Grid, Solution)
 :- copyGrid(Grid,Solution)
 , checkRowClues(Solution,RowClues)
-%, checkColClues(Solution,ColClues)
+, checkColClues(Solution,ColClues)
 %, nonTouching(Solution) % snake cannot touch itself
-%, countNeighbors(Solution) % heads have 1 neighbor, midpoints 2
+, countNeighbors(Solution) % heads have 1 neighbor, midpoints 2
 %, snakeConnected(Solution) % snake must be connected
 .
 
@@ -19,20 +19,28 @@ copyRow([-1|R],[X|S]) :- (X = 0; X = 2), copyRow(R,S).
 copyRow([Clue|R],[Clue|S]) :- Clue \= -1, copyRow(R,S).
 
 
-%First case
+%First row
 check_neighbors_rows([],[B1,B2],[_,C2]) :- check_neighbors_pattern(B2,0,0,C2,B1).
 check_neighbors_rows([],[W,M,E|RowB],[_,S,C3|RowC]) :-
 	check_neighbors_pattern(M,0,E,S,W),
 	check_neighbors_rows([],[M,E|RowB],[S,C3|RowC]).
 
-%Last case
-check_neighbors_rows([_,A2],[B1,B2],[]) :- check_neighbors_pattern(B2,A2,0,0,B1).
-check_neighbors_rows([_,N,A3|RowA],[W,M,E|RowB],[]) :-
+%Last row
+check_neighbors_rows([A1,A2],[B1,B2],[]) :- 
+	touchCheck(A1, A2, B1, B2),
+	check_neighbors_pattern(B2,A2,0,0,B1).
+
+check_neighbors_rows([A1,N,A3|RowA],[W,M,E|RowB],[]) :-
+	touchCheck(A1, N, W, M), 
 	check_neighbors_pattern(M,N,E,0,W),
 	check_neighbors_rows([N,A3|RowA],[M,E|RowB],[]).
 
-check_neighbors_rows([_,A2],[B1,B2],[_,C2]) :- check_neighbors_pattern(B2,A2,0,C2,B1).
-check_neighbors_rows([_,N,A3|RowA],[W,M,E|RowB],[_,S,C3|RowC]) :-
+%Regular Case
+check_neighbors_rows([A1,A2],[B1,B2],[_,C2]) :- 
+	touchCheck(A1, A2, B1, B2), 
+	check_neighbors_pattern(B2,A2,0,C2,B1).
+check_neighbors_rows([A1,N,A3|RowA],[W,M,E|RowB],[_,S,C3|RowC]) :-
+	touchCheck(A1, N, W, M),
 	check_neighbors_pattern(M,N,E,S,W),
 	check_neighbors_rows([N,A3|RowA],[M,E|RowB],[S,C3|RowC]).
 
@@ -64,4 +72,9 @@ countRow([Cell|Row], Clue, X) :- count_cell(Cell, X1), Y is X + X1, countRow(Row
 checkColClues([], []).
 checkColClues(Solution, ColClues) :- transpose(Solution, X), checkRowClues(X, ColClues).
 
-
+touchCheck(X1, X2, X3, X4) :-
+	count_cell(X1,A),
+	count_cell(X2,B),
+	count_cell(X3,C),
+	count_cell(X4,D),
+	not((A=D, B=C, A+B+C+D #\= 0)). %Check to see if the opposite corners are equal.

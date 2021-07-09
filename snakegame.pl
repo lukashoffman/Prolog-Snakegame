@@ -1,3 +1,4 @@
+:- [tests].
 :- use_module(library(clpfd)). % Import the module
 :- set_prolog_flag(clpfd_monotonic, true). % setting to get useful errors sometime
 
@@ -6,7 +7,9 @@ snake(RowClues, ColClues, Grid, Solution)
 , checkRowClues(Solution,RowClues)
 , checkColClues(Solution,ColClues)
 , countNeighbors(Solution) % heads have 1 neighbor, midpoints 2
-%, snakeConnected(Solution) % snake must be connected
+, solutionCoords(Solution, 0, Coords)
+, flatten(Coords, [First | Rest])
+, snakeConnected([First], Rest) % snake must be connected
 .
 
 copyGrid([],[]).
@@ -15,15 +18,6 @@ copyGrid([Row|G],[RowS|S]) :- copyRow(Row,RowS), copyGrid(G,S).
 copyRow([],[]).
 copyRow([-1|R],[X|S]) :- (X = 0; X = 2), copyRow(R,S).
 copyRow([Clue|R],[Clue|S]) :- Clue \= -1, copyRow(R,S).
-
-
-copyGrid2([],[],[]).
-copyGrid2([Row|G],[RowS|S],X,CoordList) :- copyRow2(Row,X,0,RowS, CoordList), 
-										   X1 is X + 1, copyGrid2(G,S,X1,CoordList).
-
-copyRow2([],[],_,[]).
-copyRow2([-1|R],X,Y,[Z|S], CoordList) :- (Z = 0; Z = 2),Y1 is Y + 1, (Z = 2 -> copyRow2(R,S,X,Y1,[[X,Y]|CoordList])) ; copyRow2(R,S,X,Y1,CoordList).
-copyRow2([Clue|R],X,Y,[Clue|S], CoordList) :- Clue \= -1, Y1 is Y + 1, copyRow2(R,S,X,Y1,[[X,Y]|CoordList]).
 
 %First row
 check_neighbors_rows([],[B1,B2],[_,C2]) :- check_neighbors_pattern(B2,0,0,C2,B1).
@@ -68,14 +62,21 @@ countNeighbors([RowA, RowB | Sol]) :- check_neighbors_rows([],[0 | RowA], [0 | R
 countNeighbors([RowA, RowB], notfirst) :- check_neighbors_rows([0 | RowA], [0 | RowB], []).
 countNeighbors([RowA, RowB, RowC | Sol], notfirst) :- check_neighbors_rows([0 | RowA],[0 | RowB], [0 | RowC]), countNeighbors([RowB, RowC | Sol], notfirst).
 
-checkRowClues([],[]).
+checkRowClues([],[]) :- !.
 checkRowClues([_|Solution], [-1|RowClues]) :- checkRowClues(Solution, RowClues).
 checkRowClues([Row|Solution], [Clue|RowClues]) :- 
     countRow(Row, Clue, 0),
+    %checkSum(Clue, Row),
     checkRowClues(Solution, RowClues).
 
 countRow([], Clue, Clue) :- !.
 countRow([Cell|Row], Clue, X) :- count_cell(Cell, X1), Y is X + X1, countRow(Row, Clue, Y).
+
+checkSum(Clue, Row) :- renumberAll(Row, Renumbered), sum_list(Renumbered, Clue).
+renumberAll([0|L],[0|R]) :- renumberAll(L,R).
+renumberAll([1|L],[1|R]) :- renumberAll(L,R).
+renumberAll([2|L],[1|R]) :- renumberAll(L,R).
+renumberAll([],[]).
 
 checkColClues([], []) :- !.
 checkColClues(Solution, ColClues) :- transpose(Solution, X), checkRowClues(X, ColClues).
@@ -88,3 +89,25 @@ touchCheck(X1, X2, X3, X4) :-
 	count_cell(X4,D),
 	not((A=D, B=C, A+B+C+D #\= 0)),
 	asserta(touchCheck(X1,X2,X3,X4) :- !). %Check to see if the opposite corners are equal.
+
+neighbors([[X1,Y1]|_], [X2,Y2]) :- (abs(X2-X1) + abs(Y2-Y1)) #= 1, !.
+neighbors([_|List],Coords) :- neighbors(List,Coords), !.
+
+solutionCoords([], _, []).
+%solutionCoords([Row|Solution], 0, List) :- findCoords(Row, 0, 0, List), solutionCoords(Solution, 1, List), !.
+solutionCoords([Row|Solution], X, [Y|List]) :- X1 is X+1, findCoords(Row, X1, 0, Y), solutionCoords(Solution, X1, List).
+ 
+findCoords([], _, _, [] ).
+findCoords([0|Row], X, Y, List) :- Y1 is Y+1, findCoords(Row, X, Y1, List).
+findCoords([1|Row], X, Y, [[X1,Y1]|List]) :- X1 = X, Y1 = Y,Y2 is Y+1, findCoords(Row, X, Y2, List).
+findCoords([2|Row], X, Y, [[X1,Y1]|List]) :- X1 = X, Y1 = Y,Y2 is Y+1, findCoords(Row, X, Y2, List).
+ 
+flatten([], []).
+flatten([A|B],L) :- is_list(A), flatten(B,B1), !, append(A,B1,L).
+flatten([A|B],[A|B1]) :- flatten(B,B1).
+
+snakeConnected(_, []) :- !.
+snakeConnected(Region, Other) :-
+    select(B, Other, O2),
+    neighbors(Region, B),
+    snakeConnected([B|Region],O2), !.

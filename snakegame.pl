@@ -7,6 +7,7 @@ snake(RowClues, ColClues, Grid, Solution)
 , checkRowClues(Solution,RowClues)
 , checkColClues(Solution,ColClues)
 , countNeighbors(Solution) % heads have 1 neighbor, midpoints 2
+, checkTouching(Solution)
 , solutionCoords(Solution, 0, Coords)
 , flatten(Coords, [First | Rest])
 , snakeConnected([First], Rest) % snake must be connected
@@ -26,21 +27,21 @@ check_neighbors_rows([],[W,M,E|RowB],[_,S,C3|RowC]) :-
 	check_neighbors_rows([],[M,E|RowB],[S,C3|RowC]).
 
 %Last row
-check_neighbors_rows([A1,A2],[B1,B2],[]) :- 
-	touchCheck(A1, A2, B1, B2),
+check_neighbors_rows([_,A2],[B1,B2],[]) :- 
+	%touchCheck(A1, A2, B1, B2),
 	check_neighbors_pattern(B2,A2,0,0,B1).
 
-check_neighbors_rows([A1,N,A3|RowA],[W,M,E|RowB],[]) :-
-	touchCheck(A1, N, W, M), 
+check_neighbors_rows([_,N,A3|RowA],[W,M,E|RowB],[]) :-
+	%touchCheck(A1, N, W, M), 
 	check_neighbors_pattern(M,N,E,0,W),
 	check_neighbors_rows([N,A3|RowA],[M,E|RowB],[]).
 
 %Regular Case
-check_neighbors_rows([A1,A2],[B1,B2],[_,C2]) :- 
-	touchCheck(A1, A2, B1, B2), 
+check_neighbors_rows([_,A2],[B1,B2],[_,C2]) :- 
+	%touchCheck(A1, A2, B1, B2), 
 	check_neighbors_pattern(B2,A2,0,C2,B1).
-check_neighbors_rows([A1,N,A3|RowA],[W,M,E|RowB],[_,S,C3|RowC]) :-
-	touchCheck(A1, N, W, M),
+check_neighbors_rows([_,N,A3|RowA],[W,M,E|RowB],[_,S,C3|RowC]) :-
+	%touchCheck(A1, N, W, M),
 	check_neighbors_pattern(M,N,E,S,W),
 	check_neighbors_rows([N,A3|RowA],[M,E|RowB],[S,C3|RowC]).
 
@@ -55,6 +56,8 @@ check_neighbors_pattern(Piece,N,E,S,W) :- 1 #=< Piece,
 	Piece #= X1+X2+X3+X4, asserta(check_neighbors_pattern(Piece,N,E,S,W) :- !).
 
 count_cell(0,0) :- !.
+count_cell(1,1) :- !.
+count_cell(2,1) :- !.
 count_cell(_,1).
 
 countNeighbors([]).
@@ -81,6 +84,14 @@ renumberAll([],[]).
 checkColClues([], []) :- !.
 checkColClues(Solution, ColClues) :- transpose(Solution, X), checkRowClues(X, ColClues).
 
+checkTouching([]) :- !.
+checkTouching([_]).
+checkTouching([R1, R2 | Rows]) :- checkTouchingRows(R1, R2), checkTouching(Rows).
+
+checkTouchingRows([_],[_]) :- !. 
+checkTouchingRows([],[]) :- !.
+checkTouchingRows([A,B|R1],[C,D|R2]) :- touchCheck(A,B,C,D), checkTouchingRows(R1,R2).
+
 :- dynamic touchCheck/4. 
 touchCheck(X1, X2, X3, X4) :-
 	count_cell(X1,A),
@@ -88,7 +99,8 @@ touchCheck(X1, X2, X3, X4) :-
 	count_cell(X3,C),
 	count_cell(X4,D),
 	not((A=D, B=C, A+B+C+D #\= 0)),
-	asserta(touchCheck(X1,X2,X3,X4) :- !). %Check to see if the opposite corners are equal.
+	asserta(touchCheck(X1,X2,X3,X4) :- !),
+	asserta(touchCheck(X2,X1,X4,X3) :- !). %Check to see if the opposite corners are equal.
 
 neighbors([[X1,Y1]|_], [X2,Y2]) :- (abs(X2-X1) + abs(Y2-Y1)) #= 1, !.
 neighbors([_|List],Coords) :- neighbors(List,Coords), !.

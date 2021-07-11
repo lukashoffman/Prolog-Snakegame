@@ -6,8 +6,8 @@ snake(RowClues, ColClues, Grid, Solution)
 :- copyGrid(Grid,Solution)
 , checkRowClues(RowClues,Solution)
 , checkColClues(Solution,ColClues)
-, countNeighbors(Solution) % heads have 1 neighbor, midpoints 2
 , checkTouching(Solution)
+, countNeighbors(Solution) % heads have 1 neighbor, midpoints 2
 , solutionCoords(Solution, 0, Coords)
 , flatten(Coords, [First | Rest])
 , snakeConnected([First], Rest) % snake must be connected
@@ -127,22 +127,38 @@ touchCheck(X1, X2, X3, X4) :-
 	asserta(touchCheck(X1,X2,X3,X4) :- !),
 	asserta(touchCheck(X2,X1,X4,X3) :- !). %Check to see if the opposite corners are equal.
 
-neighbors([[X1,Y1]|_], [X2,Y2]) :- (abs(X2-X1) + abs(Y2-Y1)) #= 1, !.
-neighbors([_|List],Coords) :- neighbors(List,Coords), !.
 
+%%% CONNECTEDNESS %%%
+% We found the connectedness suggestions in the assignment to be relatively difficult
+% to implement, so we devised a different solution that is still fairly runtime efficient.
+% We put the coordinates of each point in our grid into a list, then using the first in the list,
+% attempt to select remaining points to build a "region," and if there are still leftover 
+% elements that cannot be put into the region, we know there is a disconnect.
+% In our tests, this takes roughly 0.001 seconds to evaluate a correct solution,
+% and in finding a disconnected cycle, somewhere around 0.004 seconds.
+
+% This function finds coordinates of each element in our grid.
 solutionCoords([], _, []).
-%solutionCoords([Row|Solution], 0, List) :- findCoords(Row, 0, 0, List), solutionCoords(Solution, 1, List), !.
 solutionCoords([Row|Solution], X, [Y|List]) :- X1 is X+1, findCoords(Row, X1, 0, Y), solutionCoords(Solution, X1, List).
- 
+
+%Helper function to assemble the list of coordinates
 findCoords([], _, _, [] ).
 findCoords([0|Row], X, Y, List) :- Y1 is Y+1, findCoords(Row, X, Y1, List).
 findCoords([1|Row], X, Y, [[X1,Y1]|List]) :- X1 = X, Y1 = Y,Y2 is Y+1, findCoords(Row, X, Y2, List).
 findCoords([2|Row], X, Y, [[X1,Y1]|List]) :- X1 = X, Y1 = Y,Y2 is Y+1, findCoords(Row, X, Y2, List).
- 
+
+%Flatten takes list for each row and returns a single list of only coordinates,
+%which are still stored as lists of two numbers.
 flatten([], []).
 flatten([A|B],L) :- is_list(A), flatten(B,B1), !, append(A,B1,L).
 flatten([A|B],[A|B1]) :- flatten(B,B1).
 
+%This sees if a coordinate neighbors any in a list, returning true if so.
+neighbors([[X1,Y1]|_], [X2,Y2]) :- (abs(X2-X1) + abs(Y2-Y1)) #= 1, !.
+neighbors([_|List],Coords) :- neighbors(List,Coords), !.
+
+% This function attempts to remove elements from other and add them to region
+% if they neighbor each other. If all elements have been removed from other, it returns true.
 snakeConnected(_, []) :- !.
 snakeConnected(Region, Other) :-
     select(B, Other, O2),

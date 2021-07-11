@@ -72,7 +72,7 @@ countNeighbors([RowA, RowB], notfirst) :- check_neighbors_rows([0 | RowA], [0 | 
 %Pass in 3 rows for the normal case.
 countNeighbors([RowA, RowB, RowC | Sol], notfirst) :- check_neighbors_rows([0 | RowA],[0 | RowB], [0 | RowC]), countNeighbors([RowB, RowC | Sol], notfirst).
 
-%%% ROW / COLUMN CLUES %%%
+%Standard check row clues. Check col clues transposes the grid, then calls check row clues.
 
 checkRowClues([-1|T], [_|GridRemainder]) :- checkRowClues(T, GridRemainder).
 checkRowClues([H|T], [R|GridRemainder]) :- H >= 0, checkSum(H,R), checkRowClues(T, GridRemainder).

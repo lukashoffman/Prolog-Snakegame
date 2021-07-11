@@ -6,12 +6,15 @@ snake(RowClues, ColClues, Grid, Solution)
 :- copyGrid(Grid,Solution)
 , checkRowClues(RowClues,Solution)
 , checkColClues(Solution,ColClues)
-, checkTouching(Solution)
 , countNeighbors(Solution) % heads have 1 neighbor, midpoints 2
+, checkTouching(Solution)
 , solutionCoords(Solution, 0, Coords)
 , flatten(Coords, [First | Rest])
 , snakeConnected([First], Rest) % snake must be connected
 .
+
+%copyGrid is mostly the same as the standard, but the row copier has
+%extra clauses to make copying more efficient, and to remove invalid substitutions. 
 
 copyGrid([],[]).
 copyGrid([Row|G],[RowS|S]) :- copyRow(Row,RowS), copyGrid(G,S).
@@ -20,44 +23,31 @@ copyRow([],[]).
 copyRow([-1|R],[X|S]) :- (X = 0; X = 2), copyRow(R,S).
 copyRow([Clue|R],[Clue|S]) :- Clue \= -1, copyRow(R,S).
 
-fill([], _, 0).
-fill([X|Xs], X, N) :- succ(N0, N), fill(Xs, X, N0).
-
-extend_grid([Row|Grid], [L|Solution]) :- length(Row, X), X1 is X + 2, fill(L, 0, X1), extend_grid1([Row|Grid], Solution, X1). 
-
-extend_grid1([], [Row], X1):- fill(Row, 0, X1).
-extend_grid1([Row|Grid], [RowS|Solution], X1) :- extendRow1(Row, RowS), extend_grid1(Grid, Solution, X1).
-extendRow1(Row, [X|RowS]) :- X = 0, extendRow2(Row, RowS).
-
-extendRow2([], [0]).
-extendRow2([Cell|Row], [Cell|Solution]) :- extendRow2(Row, Solution).
+%%% CHECK NEIGHBORS %%%
 
 % First row
-check_neighbors_rows([],[B1,B2],[_,C2]) :- check_neighbors_pattern(B2,0,0,C2,B1).
-check_neighbors_rows([],[W,M,E|RowB],[_,S,C3|RowC]) :-
+check_neighbors_rows([],[B1,B2],[_,C2]) :-  %End of the row case
+	check_neighbors_pattern(B2,0,0,C2,B1).
+check_neighbors_rows([],[W,M,E|RowB],[_,S,C3|RowC]) :- %Rest of the row case
 	check_neighbors_pattern(M,0,E,S,W),
-	check_neighbors_rows([],[M,E|RowB],[S,C3|RowC]).
+	check_neighbor_rows([],[M,E|RowB],[S,C3|RowC]).
 
 %Last row
-check_neighbors_rows([_,A2],[B1,B2],[]) :- 
-	%touchCheck(A1, A2, B1, B2),
+check_neighbors_rows([_,A2],[B1,B2],[]) :- %End of the row case
 	check_neighbors_pattern(B2,A2,0,0,B1).
 
-check_neighbors_rows([_,N,A3|RowA],[W,M,E|RowB],[]) :-
-	%touchCheck(A1, N, W, M), 
+check_neighbors_rows([_,N,A3|RowA],[W,M,E|RowB],[]) :- %Rest of the row case
 	check_neighbors_pattern(M,N,E,0,W),
 	check_neighbors_rows([N,A3|RowA],[M,E|RowB],[]).
 
 % %Regular Case
-check_neighbors_rows([_,A2],[B1,B2],[_,C2]) :- 
-	%touchCheck(A1, A2, B1, B2), 
+check_neighbors_rows([_,A2],[B1,B2],[_,C2]) :- %End of the row case
 	check_neighbors_pattern(B2,A2,0,C2,B1).
-check_neighbors_rows([_,N,A3|RowA],[W,M,E|RowB],[_,S,C3|RowC]) :-
-	%touchCheck(A1, N, W, M),
+check_neighbors_rows([_,N,A3|RowA],[W,M,E|RowB],[_,S,C3|RowC]) :- %Rest of the row case
 	check_neighbors_pattern(M,N,E,S,W),
 	check_neighbors_rows([N,A3|RowA],[M,E|RowB],[S,C3|RowC]).
 
-
+%Standard check_neighbors_pattern with some meta-programming for efficiency.
 :- dynamic check_neighbors_pattern/5.
 check_neighbors_pattern(0,_,_,_,_) :- !.
 check_neighbors_pattern(Piece,N,E,S,W) :- !, 1 #=< Piece,
@@ -67,31 +57,22 @@ check_neighbors_pattern(Piece,N,E,S,W) :- !, 1 #=< Piece,
 	count_cell(W,X4),
 	Piece #= X1+X2+X3+X4, asserta(check_neighbors_pattern(Piece,N,E,S,W) :- !).
 
+
+% A few specific cases for speed, and a general one for exceptional cases.
 count_cell(0,0) :- !.
 count_cell(1,1) :- !.
 count_cell(2,1) :- !.
 count_cell(_,1).
 
 countNeighbors([]).
+%For checking the first row, we pass it in as the middle, with an empty list on top.
 countNeighbors([RowA, RowB | Sol]) :- check_neighbors_rows([],[0 | RowA], [0 | RowB]), countNeighbors([RowA, RowB |Sol], notfirst).
+%If there are only two rows and we have checked the first, we pass in an empty list for the last row.
 countNeighbors([RowA, RowB], notfirst) :- check_neighbors_rows([0 | RowA], [0 | RowB], []).
+%Pass in 3 rows for the normal case.
 countNeighbors([RowA, RowB, RowC | Sol], notfirst) :- check_neighbors_rows([0 | RowA],[0 | RowB], [0 | RowC]), countNeighbors([RowB, RowC | Sol], notfirst).
 
-% countNeighbors(Grid) :- extend_grid(Grid, New), countNeighborsExtended(New).
-
-% countNeighborsExtended([A,B,C]) :-
-% 	check_neighbors_rows(A,B,C).
-
-% countNeighborsExtended([A,B,C,D | L]) :-
-% 	check_neighbors_rows(A,B,C),
-% 	countNeighborsExtended([B,C,D |L]).
-
-% checkRowClues([],[]) :- !.
-% checkRowClues([_|Solution], [-1|RowClues]) :- checkRowClues(Solution, RowClues).
-% checkRowClues([Row|Solution], [Clue|RowClues]) :- 
-%     countRow(Row, Clue, 0),	
-%     %checkSum(Clue, Row),
-%     checkRowClues(Solution, RowClues).
+%%% ROW / COLUMN CLUES %%%
 
 checkRowClues([-1|T], [_|GridRemainder]) :- checkRowClues(T, GridRemainder).
 checkRowClues([H|T], [R|GridRemainder]) :- H >= 0, checkSum(H,R), checkRowClues(T, GridRemainder).
